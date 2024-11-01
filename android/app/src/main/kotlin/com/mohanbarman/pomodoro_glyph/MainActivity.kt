@@ -1,4 +1,4 @@
-package com.example.pomodoro_glyph
+package com.mohanbarman.pomodoro_glyph
 
 import io.flutter.embedding.android.FlutterActivity
 
