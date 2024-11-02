@@ -5,7 +5,7 @@ import 'package:pomodoro_glyph/models/glyph.dart';
 import 'package:pomodoro_glyph/models/settings.dart';
 
 class TimerModel extends ChangeNotifier {
-  int _lap = 1;
+  int _completedSession = 0;
   int timerSec = 0;
   int maxTimerSec = 0;
   bool _breakStarted = false;
@@ -37,44 +37,41 @@ class TimerModel extends ChangeNotifier {
   }
 
   int get lap {
-    return (_lap / 2).ceil();
+    return _completedSession + 1;
   }
 
   void start() {
     if (_timer != null) return;
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       timerSec--;
+      notifyListeners();
       if (timerSec < 0) timerSec = 0;
       glyph.setProgress(maxTimerSec - timerSec, maxTimerSec);
-      if (timerSec > 0) {
-        notifyListeners();
-        return;
-      }
-      _lap++;
+      if (timerSec > 0) return;
 
-      // breaks on even lap
-      if (_lap % 2 == 0) {
+      // break has started
+      if (!_breakStarted) {
         _breakStarted = true;
-        timerSec = _lap % settings.sessionUntilLongBreak == 0
+        _isLongBreak = (_completedSession + 1) % settings.sessionUntilLongBreak == 0;
+        timerSec = _isLongBreak
             ? settings.longBreakLength * 60
             : settings.shortBreakLength * 60;
         maxTimerSec = timerSec;
-        _isLongBreak = _lap % settings.sessionUntilLongBreak == 0;
         if (_isLongBreak) {
           glyph.isLongBreak = true;
         } else {
           glyph.isShortBreak = true;
         }
-      }
-
-      // if not then break has ended
-      else {
+        glyph.setProgress(0, 10);
+      } else {
+        // break has ended
         timerSec = settings.lapLength * 60;
         maxTimerSec = timerSec;
         _breakStarted = false;
         _isLongBreak = false;
         glyph.isShortBreak = false;
         glyph.isLongBreak = false;
+        _completedSession++;
       }
 
       if (_isFastForward) {
@@ -83,6 +80,8 @@ class TimerModel extends ChangeNotifier {
       } else {
         notifyListeners();
       }
+
+      stop();
     });
   }
 
@@ -112,7 +111,7 @@ class TimerModel extends ChangeNotifier {
       _timer?.cancel();
       _timer = null;
     }
-    _lap = 1;
+    _completedSession = 0;
     timerSec = settings.lapLength * 60;
     maxTimerSec = timerSec;
     _isLongBreak = false;
